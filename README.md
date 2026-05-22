@@ -49,6 +49,28 @@ Cycle through modes with `Cmd+E` (macOS) / `Ctrl+E` (Windows/Linux).
 - Displays tags in a bar at the bottom of the sidebar
 - Click a tag to filter the file tree to only files containing that tag
 
+### Graph View
+
+- Toggle with `Cmd+G` / `Ctrl+G` or the **Graph** toolbar button
+- Visualizes relationships between all markdown files in the vault
+- Detects three types of connections:
+  - **Wiki links** (`[[filename]]`) -- direct references between notes
+  - **Markdown links** (`[text](path.md)`) -- standard links to other `.md` files
+  - **Shared tags** -- files that share the same `#tag` (capped at tags appearing in 20 or fewer files to avoid clutter)
+- Force-directed layout powered by d3-force, rendered on `<canvas>` for performance
+- Pan, zoom (scroll wheel), and drag nodes interactively
+- Filter input in the toolbar to highlight nodes matching a name or tag
+- Hover tooltips showing file name, connection count, and tags
+- Click any node to open that file in Live Preview mode
+- Color-coded legend distinguishing link types
+
+### Recent Files & Empty State
+
+- When no file is selected, the editor area shows a welcome screen with:
+  - **Recent files** -- last 10 opened files with relative timestamps, click to reopen
+  - **Keyboard shortcut grid** -- quick reference for the most useful shortcuts
+- Recent files are persisted across sessions
+
 ### Auto-Save
 
 Files are automatically saved 1 second after you stop typing. A blue dot appears next to the filename in the toolbar when there are unsaved changes. Press `Cmd+S` / `Ctrl+S` to save immediately.
@@ -81,6 +103,7 @@ The app remembers your last opened vault and reopens it automatically on next la
 |----------|--------|
 | `Cmd+S` | Save current file |
 | `Cmd+E` | Cycle view mode (Live Preview / Source / Reading) |
+| `Cmd+G` | Toggle graph view |
 | `Cmd+Shift+F` | Toggle search panel |
 | `Cmd+Z` | Undo |
 | `Cmd+Shift+Z` | Redo |
@@ -97,6 +120,7 @@ The app remembers your last opened vault and reopens it automatically on next la
 | UI framework | [React 19](https://react.dev/) + TypeScript |
 | Editor | [CodeMirror 6](https://codemirror.net/) with markdown language support |
 | Markdown preview | [react-markdown](https://github.com/remarkjs/react-markdown) + [remark-gfm](https://github.com/remarkjs/remark-gfm) |
+| Graph physics | [d3-force](https://github.com/d3/d3-force) + [d3-selection](https://github.com/d3/d3-selection) |
 | GFM extensions | Strikethrough, tables, task lists via [@lezer/markdown](https://github.com/lezer-parser/markdown) |
 
 ## Project Structure
@@ -118,12 +142,15 @@ src/
 │   ├── components/
 │   │   ├── VaultPicker.tsx        # Startup vault selection screen
 │   │   ├── TagsBar.tsx            # Tag display and filtering
+│   │   ├── EmptyState.tsx         # Recent files + keyboard shortcut grid
 │   │   ├── Sidebar/
 │   │   │   ├── FileTree.tsx       # Collapsible file/folder tree
 │   │   │   └── SearchPanel.tsx    # Full-text search UI
-│   │   └── Editor/
-│   │       ├── MarkdownEditor.tsx # CodeMirror 6 wrapper
-│   │       └── MarkdownPreview.tsx# react-markdown preview
+│   │   ├── Editor/
+│   │   │   ├── MarkdownEditor.tsx # CodeMirror 6 wrapper
+│   │   │   └── MarkdownPreview.tsx# react-markdown preview
+│   │   └── Graph/
+│   │       └── GraphView.tsx      # Canvas force-directed graph
 │   ├── extensions/
 │   │   ├── livePreview.ts         # CodeMirror live preview plugin
 │   │   └── markdownCommands.ts    # Markdown formatting commands
@@ -162,6 +189,9 @@ The app follows Electron's recommended security model:
 | `fs:rename` | renderer &rarr; main | Rename file or directory |
 | `fs:delete` | renderer &rarr; main | Move file/directory to trash |
 | `search:query` | renderer &rarr; main | Full-text search across vault |
+| `graph:build` | renderer &rarr; main | Build graph data (nodes + links) from vault |
+| `recent:get` | renderer &rarr; main | Get list of recently opened files |
+| `recent:add` | renderer &rarr; main | Record a file as recently opened |
 
 ## Getting Started
 
