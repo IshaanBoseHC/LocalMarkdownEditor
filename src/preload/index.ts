@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC, FileNode, SearchResult } from '../shared/types'
+import { IPC, FileNode, SearchResult, GraphData, RecentFile } from '../shared/types'
 
 const api = {
   // Vault
@@ -25,6 +25,16 @@ const api = {
   // Search
   search: (query: string, vaultPath: string): Promise<SearchResult[]> =>
     ipcRenderer.invoke(IPC.SEARCH_QUERY, query, vaultPath),
+
+  // Graph
+  buildGraph: (vaultPath: string): Promise<GraphData> =>
+    ipcRenderer.invoke(IPC.GRAPH_BUILD, vaultPath),
+
+  // Recent files
+  getRecentFiles: (): Promise<RecentFile[]> =>
+    ipcRenderer.invoke(IPC.RECENT_GET),
+  addRecentFile: (filePath: string, fileName: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.RECENT_ADD, filePath, fileName),
 
   // Watch events (main -> renderer)
   onFsChange: (callback: (event: string, path: string) => void) => {

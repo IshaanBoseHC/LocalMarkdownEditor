@@ -16,6 +16,33 @@ export interface SearchResult {
   matchEnd: number
 }
 
+// Graph view types
+export interface GraphNode {
+  id: string        // file path
+  name: string      // file name without extension
+  path: string      // full path
+  tags: string[]    // #tags found in the file
+  linkCount: number // total connections
+}
+
+export interface GraphLink {
+  source: string    // source file path
+  target: string    // target file path
+  type: 'wiki' | 'markdown' | 'tag' // relationship type
+}
+
+export interface GraphData {
+  nodes: GraphNode[]
+  links: GraphLink[]
+}
+
+// Recent file entry
+export interface RecentFile {
+  path: string
+  name: string
+  openedAt: number  // timestamp
+}
+
 // IPC channel names
 export const IPC = {
   VAULT_OPEN: 'vault:open',
@@ -28,5 +55,8 @@ export const IPC = {
   FS_RENAME: 'fs:rename',
   FS_DELETE: 'fs:delete',
   SEARCH_QUERY: 'search:query',
-  FS_WATCH_EVENT: 'fs:watchEvent'
+  FS_WATCH_EVENT: 'fs:watchEvent',
+  GRAPH_BUILD: 'graph:build',
+  RECENT_GET: 'recent:get',
+  RECENT_ADD: 'recent:add'
 } as const

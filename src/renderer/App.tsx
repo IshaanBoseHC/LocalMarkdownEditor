@@ -5,17 +5,20 @@ import { FileTree } from './components/Sidebar/FileTree'
 import { SearchPanel } from './components/Sidebar/SearchPanel'
 import { MarkdownEditor, EditorMode } from './components/Editor/MarkdownEditor'
 import { MarkdownPreview } from './components/Editor/MarkdownPreview'
+import { GraphView } from './components/Graph/GraphView'
+import { EmptyState } from './components/EmptyState'
 import { TagsBar } from './components/TagsBar'
 import { useFileTree } from './hooks/useFileTree'
 import { useFileContent } from './hooks/useFileContent'
 import { useSearch } from './hooks/useSearch'
 import { useTags } from './hooks/useTags'
-import { FileNode } from '../shared/types'
+import { FileNode, GraphData } from '../shared/types'
 
 // Live Preview = WYSIWYG-like editing (default)
-// Source      = raw markdown with syntax highlighting
-// Reading     = fully rendered, read-only preview
-type ViewMode = 'live' | 'source' | 'reading'
+// Source       = raw markdown with syntax highlighting
+// Reading      = fully rendered, read-only preview
+// Graph        = force-directed graph of document relationships
+type ViewMode = 'live' | 'source' | 'reading' | 'graph'
 type SidebarMode = 'files' | 'search'
 
 function AppContent() {
@@ -38,6 +41,11 @@ function AppContent() {
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>('files')
   const [sidebarWidth, setSidebarWidth] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
+
+  // Graph state
+  const [graphData, setGraphData] = useState<GraphData | null>(null)
+  const [graphLoading, setGraphLoading] = useState(false)
+  const [graphFilter, setGraphFilter] = useState('')
 
   // Load tree when vault is opened
   useEffect(() => {
@@ -62,6 +70,25 @@ function AppContent() {
     }
   }, [currentFilePath, currentFileContent, registerFileTags])
 
+  // Track recent files when a file is opened
+  useEffect(() => {
+    if (currentFilePath) {
+      const name = currentFilePath.split('/').pop() || ''
+      window.api.addRecentFile(currentFilePath, name)
+    }
+  }, [currentFilePath])
+
+  // Load graph data when switching to graph view
+  useEffect(() => {
+    if (viewMode === 'graph' && vaultPath && !graphData) {
+      setGraphLoading(true)
+      window.api.buildGraph(vaultPath).then((data) => {
+        setGraphData(data)
+        setGraphLoading(false)
+      })
+    }
+  }, [viewMode, vaultPath, graphData])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,13 +96,18 @@ function AppContent() {
         e.preventDefault()
         setSidebarMode((m) => (m === 'search' ? 'files' : 'search'))
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'e') {
         e.preventDefault()
         setViewMode((m) => {
           if (m === 'live') return 'source'
           if (m === 'source') return 'reading'
+          if (m === 'reading') return 'live'
           return 'live'
         })
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'g') {
+        e.preventDefault()
+        setViewMode((m) => (m === 'graph' ? 'live' : 'graph'))
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -108,6 +140,18 @@ function AppContent() {
   const handleFileClick = useCallback(
     (filePath: string) => {
       openFile(filePath)
+      // Switch out of graph view when opening a file
+      if (viewMode === 'graph') {
+        setViewMode('live')
+      }
+    },
+    [openFile, viewMode]
+  )
+
+  const handleGraphNodeClick = useCallback(
+    (filePath: string) => {
+      openFile(filePath)
+      setViewMode('live')
     },
     [openFile]
   )
@@ -182,6 +226,10 @@ function AppContent() {
 
   // Map view mode to editor mode
   const editorMode: EditorMode = viewMode === 'source' ? 'source' : 'live'
+  const showEditor = viewMode === 'live' || viewMode === 'source'
+  const showReading = viewMode === 'reading'
+  const showGraph = viewMode === 'graph'
+  const showEmptyState = !currentFilePath && !showGraph
 
   return (
     <div className="app-layout">
@@ -247,13 +295,32 @@ function AppContent() {
         {/* Toolbar */}
         <div className="toolbar">
           <div className="toolbar-left">
-            {fileName && (
+            {fileName && !showGraph && (
               <span className="toolbar-filename">
                 {isDirty && (
                   <span className="dirty-dot" title="Unsaved changes" />
                 )}
                 {fileName}
               </span>
+            )}
+            {showGraph && (
+              <div className="graph-filter-wrapper">
+                <input
+                  type="text"
+                  className="graph-filter-input"
+                  placeholder="Filter by name or tag..."
+                  value={graphFilter}
+                  onChange={(e) => setGraphFilter(e.target.value)}
+                />
+                {graphFilter && (
+                  <button
+                    className="graph-filter-clear"
+                    onClick={() => setGraphFilter('')}
+                  >
+                    x
+                  </button>
+                )}
+              </div>
             )}
           </div>
           <div className="toolbar-right">
@@ -278,15 +345,25 @@ function AppContent() {
             >
               Reading
             </button>
+            <span className="toolbar-separator" />
+            <button
+              className={`view-mode-btn ${viewMode === 'graph' ? 'view-mode-active' : ''}`}
+              onClick={() => setViewMode((m) => (m === 'graph' ? 'live' : 'graph'))}
+              title="Graph View (Cmd+G)"
+            >
+              Graph
+            </button>
           </div>
         </div>
 
-        {/* Editor / Preview panes */}
+        {/* Content area */}
         <div className="editor-preview-wrapper">
-          {/* Editor is always mounted to preserve state; hidden in reading mode */}
+          {/* Editor (always mounted, hidden when not active) */}
           <div
             className="editor-pane"
-            style={{ display: viewMode === 'reading' ? 'none' : undefined }}
+            style={{
+              display: showEditor && !showEmptyState ? undefined : 'none'
+            }}
           >
             <MarkdownEditor
               content={currentFileContent}
@@ -296,12 +373,33 @@ function AppContent() {
               onSave={saveFile}
             />
           </div>
-          {viewMode === 'reading' && (
+
+          {/* Reading view */}
+          {showReading && !showEmptyState && (
             <div className="preview-pane">
               <MarkdownPreview
                 content={currentFileContent}
                 filePath={currentFilePath}
               />
+            </div>
+          )}
+
+          {/* Graph view */}
+          {showGraph && (
+            <div className="graph-pane">
+              <GraphView
+                graphData={graphData}
+                loading={graphLoading}
+                filter={graphFilter}
+                onNodeClick={handleGraphNodeClick}
+              />
+            </div>
+          )}
+
+          {/* Empty state (no file selected, not in graph) */}
+          {showEmptyState && !showGraph && (
+            <div className="editor-pane">
+              <EmptyState onFileClick={handleFileClick} />
             </div>
           )}
         </div>

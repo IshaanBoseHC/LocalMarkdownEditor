@@ -1,6 +1,6 @@
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import { IPC } from '../shared/types'
-import { getConfigValue, setConfigValue } from './store'
+import { getConfigValue, setConfigValue, getRecentFiles, addRecentFile } from './store'
 import {
   readTree,
   readFile,
@@ -8,7 +8,8 @@ import {
   createFile,
   createDir,
   rename,
-  searchVault
+  searchVault,
+  buildGraphData
 } from './fileSystem'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
@@ -69,5 +70,20 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // Search across vault
   ipcMain.handle(IPC.SEARCH_QUERY, async (_event, query: string, vaultPath: string) => {
     return searchVault(vaultPath, query)
+  })
+
+  // Build graph data
+  ipcMain.handle(IPC.GRAPH_BUILD, async (_event, vaultPath: string) => {
+    return buildGraphData(vaultPath)
+  })
+
+  // Get recent files
+  ipcMain.handle(IPC.RECENT_GET, () => {
+    return getRecentFiles()
+  })
+
+  // Add to recent files
+  ipcMain.handle(IPC.RECENT_ADD, (_event, filePath: string, fileName: string) => {
+    addRecentFile(filePath, fileName)
   })
 }
