@@ -331,11 +331,11 @@ body {
   position: relative;
   z-index: 10;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   width: 36px;
   flex-shrink: 0;
-  padding: var(--titlebar-inset) 0 0;
+  padding: calc(var(--titlebar-inset) + 10px) 0 0;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
