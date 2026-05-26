@@ -3,6 +3,7 @@ import { join } from 'path'
 import { registerIpcHandlers } from './ipc'
 
 let mainWindow: BrowserWindow | null = null
+let ipcRegistered = false
 
 function createWindow(): void {
   const isMac = process.platform === 'darwin'
@@ -24,8 +25,11 @@ function createWindow(): void {
     }
   })
 
-  // Register all IPC handlers
-  registerIpcHandlers(mainWindow)
+  // Register IPC handlers only once
+  if (!ipcRegistered) {
+    registerIpcHandlers(mainWindow)
+    ipcRegistered = true
+  }
 
   // Load the renderer
   if (process.env['ELECTRON_RENDERER_URL']) {
