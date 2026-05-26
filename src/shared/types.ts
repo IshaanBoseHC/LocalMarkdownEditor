@@ -43,6 +43,30 @@ export interface RecentFile {
   openedAt: number  // timestamp
 }
 
+// Vault statistics for dashboard
+export interface VaultStats {
+  totalNotes: number
+  totalFolders: number
+  totalWords: number
+  totalCharacters: number
+  // Per-file info for charts
+  files: {
+    path: string
+    name: string
+    words: number
+    characters: number
+    createdAt: number   // birthtime ms
+    modifiedAt: number  // mtime ms
+    tags: string[]
+    size: number        // bytes
+  }[]
+  // Aggregated tag counts
+  tagCounts: { tag: string; count: number }[]
+  // Daily activity: { "YYYY-MM-DD": count } for the last 365 days
+  dailyCreated: Record<string, number>
+  dailyModified: Record<string, number>
+}
+
 // IPC channel names
 export const IPC = {
   VAULT_OPEN: 'vault:open',
@@ -58,5 +82,6 @@ export const IPC = {
   FS_WATCH_EVENT: 'fs:watchEvent',
   GRAPH_BUILD: 'graph:build',
   RECENT_GET: 'recent:get',
-  RECENT_ADD: 'recent:add'
+  RECENT_ADD: 'recent:add',
+  VAULT_STATS: 'vault:stats'
 } as const

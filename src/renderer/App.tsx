@@ -6,7 +6,7 @@ import { SearchPanel } from './components/Sidebar/SearchPanel'
 import { MarkdownEditor, EditorMode } from './components/Editor/MarkdownEditor'
 import { MarkdownPreview } from './components/Editor/MarkdownPreview'
 import { GraphView } from './components/Graph/GraphView'
-import { EmptyState } from './components/EmptyState'
+import { Dashboard } from './components/Dashboard'
 import { QuickSwitcher } from './components/QuickSwitcher'
 import { NewItemDialog } from './components/NewItemDialog'
 import { TagsBar } from './components/TagsBar'
@@ -410,6 +410,16 @@ function AppContent() {
               </svg>
             </button>
             <span className="toolbar-separator" />
+            <button
+              className={`toolbar-new-btn ${showEmptyState ? 'toolbar-home-active' : ''}`}
+              onClick={() => { setCurrentFile(null); if (viewMode === 'graph') setViewMode('live') }}
+              title="Dashboard"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M2.5 6.5L8 2l5.5 4.5V13a1 1 0 01-1 1h-3V10H6.5v4h-3a1 1 0 01-1-1V6.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+              </svg>
+              <span>Home</span>
+            </button>
             {fileName && !showGraph && (
               <span className="toolbar-filename">
                 {isDirty && (
@@ -511,11 +521,13 @@ function AppContent() {
             </div>
           )}
 
-          {/* Empty state (no file selected, not in graph) */}
+          {/* Dashboard (no file selected, not in graph) */}
           {showEmptyState && !showGraph && (
-            <div className="editor-pane">
-              <EmptyState onFileClick={handleFileClick} />
-            </div>
+            <Dashboard
+              vaultPath={vaultPath}
+              onFileClick={handleFileClick}
+              onNewNote={() => { setNewItemType('note'); setNewItemOpen(true) }}
+            />
           )}
         </div>
       </div>

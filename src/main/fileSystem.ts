@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { FileNode, SearchResult, GraphData, GraphNode, GraphLink } from '../shared/types'
+import { FileNode, SearchResult, GraphData, GraphNode, GraphLink, VaultStats } from '../shared/types'
 
 // Read directory tree recursively
 export async function readTree(rootPath: string): Promise<FileNode[]> {
@@ -274,5 +274,86 @@ function resolveLink(
       : null
   } catch {
     return null
+  }
+}
+
+// Gather vault-wide statistics for the dashboard
+export async function getVaultStats(vaultPath: string): Promise<VaultStats> {
+  let totalFolders = 0
+  const files: VaultStats['files'] = []
+  const tagMap = new Map<string, number>()
+
+  async function walk(dirPath: string): Promise<void> {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue
+      const fullPath = path.join(dirPath, entry.name)
+      if (entry.isDirectory()) {
+        totalFolders++
+        await walk(fullPath)
+      } else if (entry.name.endsWith('.md')) {
+        try {
+          const [content, stat] = await Promise.all([
+            fs.readFile(fullPath, 'utf-8'),
+            fs.stat(fullPath)
+          ])
+          const tags = extractTags(content)
+          const words = content.split(/\s+/).filter(Boolean).length
+          const characters = content.length
+
+          for (const tag of tags) {
+            tagMap.set(tag, (tagMap.get(tag) || 0) + 1)
+          }
+
+          files.push({
+            path: fullPath,
+            name: entry.name.replace(/\.md$/, ''),
+            words,
+            characters,
+            createdAt: stat.birthtime.getTime(),
+            modifiedAt: stat.mtime.getTime(),
+            tags,
+            size: stat.size
+          })
+        } catch {
+          // skip unreadable
+        }
+      }
+    }
+  }
+
+  await walk(vaultPath)
+
+  // Build daily activity maps (last 365 days)
+  const now = Date.now()
+  const oneYearAgo = now - 365 * 24 * 60 * 60 * 1000
+  const dailyCreated: Record<string, number> = {}
+  const dailyModified: Record<string, number> = {}
+
+  for (const f of files) {
+    if (f.createdAt >= oneYearAgo) {
+      const day = new Date(f.createdAt).toISOString().slice(0, 10)
+      dailyCreated[day] = (dailyCreated[day] || 0) + 1
+    }
+    if (f.modifiedAt >= oneYearAgo) {
+      const day = new Date(f.modifiedAt).toISOString().slice(0, 10)
+      dailyModified[day] = (dailyModified[day] || 0) + 1
+    }
+  }
+
+  // Sort tags by count descending
+  const tagCounts = Array.from(tagMap.entries())
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count)
+
+  return {
+    totalNotes: files.length,
+    totalFolders,
+    totalWords: files.reduce((sum, f) => sum + f.words, 0),
+    totalCharacters: files.reduce((sum, f) => sum + f.characters, 0),
+    files,
+    tagCounts,
+    dailyCreated,
+    dailyModified
   }
 }

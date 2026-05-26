@@ -9,7 +9,8 @@ import {
   createDir,
   rename,
   searchVault,
-  buildGraphData
+  buildGraphData,
+  getVaultStats
 } from './fileSystem'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
@@ -85,5 +86,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // Add to recent files
   ipcMain.handle(IPC.RECENT_ADD, (_event, filePath: string, fileName: string) => {
     addRecentFile(filePath, fileName)
+  })
+
+  // Get vault statistics for dashboard
+  ipcMain.handle(IPC.VAULT_STATS, async (_event, vaultPath: string) => {
+    return getVaultStats(vaultPath)
   })
 }
