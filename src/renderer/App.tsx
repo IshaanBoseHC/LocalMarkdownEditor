@@ -362,16 +362,18 @@ function AppContent() {
         {/* Toolbar */}
         <div className="toolbar">
           <div className="toolbar-left">
-            <button
-              className="sidebar-toggle-btn"
-              onClick={() => setSidebarCollapsed((v) => !v)}
-              title={sidebarCollapsed ? 'Show sidebar (Cmd+\\)' : 'Hide sidebar (Cmd+\\)'}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.2" />
-                <line x1="5.5" y1="1.5" x2="5.5" y2="14.5" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
-            </button>
+            {!sidebarCollapsed && (
+              <button
+                className="sidebar-toggle-btn"
+                onClick={() => setSidebarCollapsed(true)}
+                title="Hide sidebar (Cmd+\)"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.2" />
+                  <line x1="5.5" y1="1.5" x2="5.5" y2="14.5" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
+              </button>
+            )}
             {fileName && !showGraph && (
               <span className="toolbar-filename">
                 {isDirty && (
