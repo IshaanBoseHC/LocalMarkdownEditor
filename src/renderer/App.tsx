@@ -8,6 +8,7 @@ import { MarkdownPreview } from './components/Editor/MarkdownPreview'
 import { GraphView } from './components/Graph/GraphView'
 import { EmptyState } from './components/EmptyState'
 import { QuickSwitcher } from './components/QuickSwitcher'
+import { NewItemDialog } from './components/NewItemDialog'
 import { TagsBar } from './components/TagsBar'
 import { useFileTree } from './hooks/useFileTree'
 import { useFileContent } from './hooks/useFileContent'
@@ -51,6 +52,10 @@ function AppContent() {
 
   // Quick switcher state
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false)
+
+  // New item dialog state
+  const [newItemOpen, setNewItemOpen] = useState(false)
+  const [newItemType, setNewItemType] = useState<'note' | 'folder'>('note')
 
   // Load tree when vault is opened
   useEffect(() => {
@@ -122,6 +127,11 @@ function AppContent() {
         e.preventDefault()
         setSidebarCollapsed((v) => !v)
       }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'n') {
+        e.preventDefault()
+        setNewItemType('note')
+        setNewItemOpen(true)
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
@@ -170,18 +180,23 @@ function AppContent() {
   )
 
   const handleCreateFile = useCallback(
-    async (dirPath: string) => {
-      const name = prompt('File name:')
+    async (dirPath: string, nameArg?: string) => {
+      const name = nameArg || prompt('File name:')
       if (!name) return
-      await window.api.createFile(dirPath, name)
+      const finalName = name.endsWith('.md') ? name : `${name}.md`
+      await window.api.createFile(dirPath, finalName)
       if (vaultPath) loadTree(vaultPath)
+      // Open the newly created file
+      const newPath = `${dirPath}/${finalName}`
+      openFile(newPath)
+      if (viewMode === 'graph') setViewMode('live')
     },
-    [vaultPath, loadTree]
+    [vaultPath, loadTree, openFile, viewMode]
   )
 
   const handleCreateDir = useCallback(
-    async (dirPath: string) => {
-      const name = prompt('Folder name:')
+    async (dirPath: string, nameArg?: string) => {
+      const name = nameArg || prompt('Folder name:')
       if (!name) return
       await window.api.createDir(dirPath, name)
       if (vaultPath) loadTree(vaultPath)
@@ -374,6 +389,27 @@ function AppContent() {
                 </svg>
               </button>
             )}
+            <button
+              className="toolbar-new-btn"
+              onClick={() => { setNewItemType('note'); setNewItemOpen(true) }}
+              title="New Note (Cmd+N)"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <span>New Note</span>
+            </button>
+            <button
+              className="toolbar-new-btn toolbar-new-folder-btn"
+              onClick={() => { setNewItemType('folder'); setNewItemOpen(true) }}
+              title="New Folder"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M1.5 3.5a1 1 0 011-1h3.586a1 1 0 01.707.293L8.207 4.207a1 1 0 00.707.293H13.5a1 1 0 011 1v7a1 1 0 01-1 1h-11a1 1 0 01-1-1v-8z" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M8 7.5v4M6 9.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <span className="toolbar-separator" />
             {fileName && !showGraph && (
               <span className="toolbar-filename">
                 {isDirty && (
@@ -491,6 +527,18 @@ function AppContent() {
         isOpen={quickSwitcherOpen}
         onSelect={handleQuickSwitcherSelect}
         onClose={() => setQuickSwitcherOpen(false)}
+      />
+
+      {/* New Note / New Folder dialog (Cmd+N) */}
+      <NewItemDialog
+        tree={tree}
+        vaultPath={vaultPath}
+        currentFilePath={currentFilePath}
+        isOpen={newItemOpen}
+        initialType={newItemType}
+        onCreateFile={(dir, name) => handleCreateFile(dir, name)}
+        onCreateDir={(dir, name) => handleCreateDir(dir, name)}
+        onClose={() => setNewItemOpen(false)}
       />
     </div>
   )
