@@ -7,6 +7,7 @@ import { MarkdownEditor, EditorMode } from './components/Editor/MarkdownEditor'
 import { MarkdownPreview } from './components/Editor/MarkdownPreview'
 import { GraphView } from './components/Graph/GraphView'
 import { EmptyState } from './components/EmptyState'
+import { QuickSwitcher } from './components/QuickSwitcher'
 import { TagsBar } from './components/TagsBar'
 import { useFileTree } from './hooks/useFileTree'
 import { useFileContent } from './hooks/useFileContent'
@@ -40,12 +41,16 @@ function AppContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('live')
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>('files')
   const [sidebarWidth, setSidebarWidth] = useState(260)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
 
   // Graph state
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [graphLoading, setGraphLoading] = useState(false)
   const [graphFilter, setGraphFilter] = useState('')
+
+  // Quick switcher state
+  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false)
 
   // Load tree when vault is opened
   useEffect(() => {
@@ -108,6 +113,14 @@ function AppContent() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'g') {
         e.preventDefault()
         setViewMode((m) => (m === 'graph' ? 'live' : 'graph'))
+      }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'k') {
+        e.preventDefault()
+        setQuickSwitcherOpen((v) => !v)
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault()
+        setSidebarCollapsed((v) => !v)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -215,6 +228,25 @@ function AppContent() {
     [openFile]
   )
 
+  const handleSwitchVault = useCallback(async () => {
+    const newPath = await window.api.openVault()
+    if (newPath) {
+      setCurrentFile(null)
+      setGraphData(null)
+      setVaultPath(newPath)
+    }
+  }, [setCurrentFile, setVaultPath])
+
+  const handleQuickSwitcherSelect = useCallback(
+    (filePath: string) => {
+      openFile(filePath)
+      if (viewMode === 'graph') {
+        setViewMode('live')
+      }
+    },
+    [openFile, viewMode]
+  )
+
   // Vault selection screen
   if (!vaultPath) {
     return <VaultPicker onVaultSelected={setVaultPath} />
@@ -234,8 +266,24 @@ function AppContent() {
   return (
     <div className="app-layout">
       {/* Sidebar */}
-      <div className="sidebar" style={{ width: sidebarWidth }}>
-        <div className="sidebar-header">
+      <div
+        className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
+        style={{ width: sidebarCollapsed ? 0 : sidebarWidth }}
+      >
+        <div className="sidebar-inner">
+          <div className="sidebar-header">
+            <div className="sidebar-top-row">
+              <span className="sidebar-vault-name" title={vaultPath}>
+                {vaultPath.split('/').pop()}
+              </span>
+              <button
+                className="sidebar-vault-switch"
+                onClick={handleSwitchVault}
+                title="Open a different vault"
+              >
+                Switch
+              </button>
+            </div>
           <div className="sidebar-tabs">
             <button
               className={`sidebar-tab ${sidebarMode === 'files' ? 'sidebar-tab-active' : ''}`}
@@ -285,16 +333,31 @@ function AppContent() {
           activeTag={activeTag}
           onTagClick={setActiveTag}
         />
+        </div>
       </div>
 
       {/* Resize handle */}
-      <div className="sidebar-resize-handle" onMouseDown={handleMouseDown} />
+      <div
+        className="sidebar-resize-handle"
+        onMouseDown={handleMouseDown}
+        style={{ display: sidebarCollapsed ? 'none' : undefined }}
+      />
 
       {/* Main content */}
       <div className="main-content">
         {/* Toolbar */}
         <div className="toolbar">
           <div className="toolbar-left">
+            <button
+              className="sidebar-toggle-btn"
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              title={sidebarCollapsed ? 'Show sidebar (Cmd+\\)' : 'Hide sidebar (Cmd+\\)'}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.2" />
+                <line x1="5.5" y1="1.5" x2="5.5" y2="14.5" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            </button>
             {fileName && !showGraph && (
               <span className="toolbar-filename">
                 {isDirty && (
@@ -404,6 +467,15 @@ function AppContent() {
           )}
         </div>
       </div>
+
+      {/* Quick Switcher (Cmd+K) */}
+      <QuickSwitcher
+        tree={tree}
+        vaultPath={vaultPath}
+        isOpen={quickSwitcherOpen}
+        onSelect={handleQuickSwitcherSelect}
+        onClose={() => setQuickSwitcherOpen(false)}
+      />
     </div>
   )
 }
