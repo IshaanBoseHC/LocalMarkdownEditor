@@ -39,17 +39,17 @@ interface GraphViewProps {
 // ─── Constants ────────────────────────────────────────────
 
 const LINK_COLORS: Record<string, string> = {
-  wiki: '#569cd6',
+  wiki: '#5e9eff',
   markdown: '#4ec9b0',
-  tag: 'rgba(255,255,255,0.08)'
+  tag: 'rgba(255,255,255,0.06)'
 }
 
-const NODE_COLOR = '#569cd6'
-const NODE_COLOR_DIM = 'rgba(86,156,214,0.15)'
-const NODE_COLOR_HIGHLIGHT = '#6cb0e0'
-const LABEL_COLOR = '#cccccc'
-const LABEL_COLOR_DIM = 'rgba(204,204,204,0.15)'
-const BG_COLOR = '#1e1e1e'
+const NODE_COLOR = '#5e9eff'
+const NODE_COLOR_DIM = 'rgba(94,158,255,0.12)'
+const NODE_COLOR_HIGHLIGHT = '#7ab4ff'
+const LABEL_COLOR = '#e5e5e7'
+const LABEL_COLOR_DIM = 'rgba(229,229,231,0.12)'
+const BG_COLOR = '#0d0d0d'
 
 // ─── Component ────────────────────────────────────────────
 
@@ -212,21 +212,21 @@ export function GraphView({ graphData, loading, filter, onNodeClick }: GraphView
       const tipX = sx + 15
       const tipY = sy - 40
 
-      ctx.fillStyle = '#2d2d2d'
-      ctx.strokeStyle = '#3c3c3c'
+      ctx.fillStyle = 'rgba(22, 22, 24, 0.9)'
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.roundRect(tipX, tipY, textW, 40, 4)
       ctx.fill()
       ctx.stroke()
 
-      ctx.fillStyle = '#e0e0e0'
+      ctx.fillStyle = '#e5e5e7'
       ctx.textAlign = 'left'
       ctx.textBaseline = 'top'
       ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, sans-serif'
       ctx.fillText(label, tipX + 8, tipY + 6)
       ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif'
-      ctx.fillStyle = '#999'
+      ctx.fillStyle = '#6a6a6e'
       ctx.fillText(connLabel, tipX + 8, tipY + 22)
     }
   }, [hoveredNode])
@@ -448,7 +448,7 @@ export function GraphView({ graphData, loading, filter, onNodeClick }: GraphView
       <canvas ref={canvasRef} className="graph-canvas" />
       <div className="graph-legend">
         <span className="graph-legend-item">
-          <span className="graph-legend-line" style={{ background: '#569cd6' }} />
+          <span className="graph-legend-line" style={{ background: '#5e9eff' }} />
           Wiki link
         </span>
         <span className="graph-legend-item">
@@ -456,7 +456,7 @@ export function GraphView({ graphData, loading, filter, onNodeClick }: GraphView
           Markdown link
         </span>
         <span className="graph-legend-item">
-          <span className="graph-legend-line" style={{ background: 'rgba(255,255,255,0.3)' }} />
+          <span className="graph-legend-line" style={{ background: 'rgba(255,255,255,0.25)' }} />
           Shared tag
         </span>
       </div>

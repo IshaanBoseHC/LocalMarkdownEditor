@@ -33,41 +33,53 @@ import { markdownCommands } from '../../extensions/markdownCommands'
 const darkTheme = EditorView.theme(
   {
     '&': {
-      backgroundColor: '#1e1e1e',
-      color: '#d4d4d4',
+      backgroundColor: '#0d0d0d',
+      color: '#e0e0e2',
       height: '100%',
       fontSize: '15px'
     },
     '.cm-content': {
       fontFamily:
-        "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      padding: '24px 0',
-      caretColor: '#c6c6c6'
+        "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+      padding: '32px 0',
+      caretColor: '#5e9eff'
     },
     '.cm-cursor': {
-      borderLeftColor: '#c6c6c6'
+      borderLeftColor: '#5e9eff',
+      borderLeftWidth: '2px'
     },
     '.cm-activeLine': {
-      backgroundColor: '#2a2a2a'
+      backgroundColor: 'rgba(255, 255, 255, 0.03)'
     },
     '.cm-activeLineGutter': {
-      backgroundColor: '#2a2a2a'
+      backgroundColor: 'rgba(255, 255, 255, 0.03)'
     },
     '.cm-gutters': {
-      backgroundColor: '#1e1e1e',
-      color: '#858585',
+      backgroundColor: '#0d0d0d',
+      color: '#3a3a3e',
       border: 'none',
       paddingRight: '8px'
     },
     '.cm-selectionBackground': {
-      backgroundColor: '#264f78 !important'
+      backgroundColor: 'rgba(94, 158, 255, 0.2) !important'
     },
     '&.cm-focused .cm-selectionBackground': {
-      backgroundColor: '#264f78 !important'
+      backgroundColor: 'rgba(94, 158, 255, 0.25) !important'
     },
     '.cm-line': {
-      padding: '0 32px',
-      lineHeight: '1.7'
+      padding: '0 48px',
+      lineHeight: '1.75'
+    },
+    '.cm-matchingBracket': {
+      backgroundColor: 'rgba(94, 158, 255, 0.15)',
+      outline: '1px solid rgba(94, 158, 255, 0.3)'
+    },
+    '.cm-searchMatch': {
+      backgroundColor: 'rgba(94, 158, 255, 0.2)',
+      borderRadius: '2px'
+    },
+    '.cm-searchMatch-selected': {
+      backgroundColor: 'rgba(94, 158, 255, 0.35)'
     }
   },
   { dark: true }
@@ -78,38 +90,40 @@ const markdownStyles = EditorView.theme({
   '.cm-header-1': {
     fontSize: '1.8em',
     fontWeight: '700',
-    color: '#e0e0e0',
-    lineHeight: '1.3'
+    color: '#f0f0f2',
+    lineHeight: '1.3',
+    letterSpacing: '-0.5px'
   },
   '.cm-header-2': {
     fontSize: '1.5em',
     fontWeight: '600',
-    color: '#d4d4d4',
-    lineHeight: '1.3'
+    color: '#e5e5e7',
+    lineHeight: '1.3',
+    letterSpacing: '-0.3px'
   },
   '.cm-header-3': {
     fontSize: '1.25em',
     fontWeight: '600',
-    color: '#cccccc',
+    color: '#d8d8da',
     lineHeight: '1.3'
   },
   '.cm-header-4': {
     fontSize: '1.1em',
     fontWeight: '600',
-    color: '#c0c0c0'
+    color: '#c8c8ca'
   },
-  '.cm-header-5': { fontWeight: '600', color: '#b0b0b0' },
-  '.cm-header-6': { fontWeight: '600', color: '#a0a0a0' },
-  '.cm-strong': { fontWeight: '700', color: '#e0e0e0' },
-  '.cm-emphasis': { fontStyle: 'italic', color: '#d4d4d4' },
-  '.cm-strikethrough': { textDecoration: 'line-through', color: '#888' },
-  '.cm-link': { color: '#569cd6', textDecoration: 'underline' },
+  '.cm-header-5': { fontWeight: '600', color: '#b8b8ba' },
+  '.cm-header-6': { fontWeight: '600', color: '#a8a8aa' },
+  '.cm-strong': { fontWeight: '700', color: '#eeeeef' },
+  '.cm-emphasis': { fontStyle: 'italic', color: '#e0e0e2' },
+  '.cm-strikethrough': { textDecoration: 'line-through', color: '#6a6a6e' },
+  '.cm-link': { color: '#5e9eff', textDecoration: 'underline' },
   '.cm-url': { color: '#4ec9b0', fontSize: '0.9em' },
   '.cm-monospace': {
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-    backgroundColor: '#2d2d2d',
-    borderRadius: '3px',
-    padding: '2px 5px',
+    fontFamily: "'SF Mono', 'JetBrains Mono', 'Fira Code', monospace",
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: '5px',
+    padding: '2px 6px',
     fontSize: '0.9em'
   }
 })
@@ -117,7 +131,7 @@ const markdownStyles = EditorView.theme({
 // Source-mode specific styles (show syntax characters with subdued colors)
 const sourceTheme = EditorView.theme({
   '.cm-content': {
-    fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+    fontFamily: "'SF Mono', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
     fontSize: '13px'
   }
 })
