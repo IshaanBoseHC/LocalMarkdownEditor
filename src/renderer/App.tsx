@@ -20,7 +20,8 @@ import { FileNode, GraphData } from '../shared/types'
 // Source       = raw markdown with syntax highlighting
 // Reading      = fully rendered, read-only preview
 // Graph        = force-directed graph of document relationships
-type ViewMode = 'live' | 'source' | 'reading' | 'graph'
+// Dashboard    = vault analytics landing page
+type ViewMode = 'dashboard' | 'live' | 'source' | 'reading' | 'graph'
 type SidebarMode = 'files' | 'search'
 
 function AppContent() {
@@ -39,7 +40,7 @@ function AppContent() {
   const { allTags, activeTag, setActiveTag, filteredFiles, registerFileTags } =
     useTags()
 
-  const [viewMode, setViewMode] = useState<ViewMode>('live')
+  const [viewMode, setViewMode] = useState<ViewMode>('dashboard')
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>('files')
   const [sidebarWidth, setSidebarWidth] = useState(260)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -112,7 +113,7 @@ function AppContent() {
           if (m === 'live') return 'source'
           if (m === 'source') return 'reading'
           if (m === 'reading') return 'live'
-          return 'live'
+          return 'live' // from dashboard or graph, go to live
         })
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'g') {
@@ -163,8 +164,8 @@ function AppContent() {
   const handleFileClick = useCallback(
     (filePath: string) => {
       openFile(filePath)
-      // Switch out of graph view when opening a file
-      if (viewMode === 'graph') {
+      // Switch to editor when opening a file from dashboard or graph
+      if (viewMode === 'graph' || viewMode === 'dashboard') {
         setViewMode('live')
       }
     },
@@ -189,7 +190,7 @@ function AppContent() {
       // Open the newly created file
       const newPath = `${dirPath}/${finalName}`
       openFile(newPath)
-      if (viewMode === 'graph') setViewMode('live')
+      if (viewMode === 'graph' || viewMode === 'dashboard') setViewMode('live')
     },
     [vaultPath, loadTree, openFile, viewMode]
   )
@@ -255,7 +256,7 @@ function AppContent() {
   const handleQuickSwitcherSelect = useCallback(
     (filePath: string) => {
       openFile(filePath)
-      if (viewMode === 'graph') {
+      if (viewMode === 'graph' || viewMode === 'dashboard') {
         setViewMode('live')
       }
     },
@@ -276,7 +277,7 @@ function AppContent() {
   const showEditor = viewMode === 'live' || viewMode === 'source'
   const showReading = viewMode === 'reading'
   const showGraph = viewMode === 'graph'
-  const showEmptyState = !currentFilePath && !showGraph
+  const showDashboard = viewMode === 'dashboard'
 
   return (
     <div className="app-layout">
@@ -410,17 +411,7 @@ function AppContent() {
               </svg>
             </button>
             <span className="toolbar-separator" />
-            <button
-              className={`toolbar-new-btn ${showEmptyState ? 'toolbar-home-active' : ''}`}
-              onClick={() => { setCurrentFile(null); if (viewMode === 'graph') setViewMode('live') }}
-              title="Dashboard"
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M2.5 6.5L8 2l5.5 4.5V13a1 1 0 01-1 1h-3V10H6.5v4h-3a1 1 0 01-1-1V6.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-              </svg>
-              <span>Home</span>
-            </button>
-            {fileName && !showGraph && (
+            {fileName && !showGraph && !showDashboard && (
               <span className="toolbar-filename">
                 {isDirty && (
                   <span className="dirty-dot" title="Unsaved changes" />
@@ -449,6 +440,14 @@ function AppContent() {
             )}
           </div>
           <div className="toolbar-right">
+            <button
+              className={`view-mode-btn ${viewMode === 'dashboard' ? 'view-mode-active' : ''}`}
+              onClick={() => setViewMode('dashboard')}
+              title="Dashboard"
+            >
+              Dashboard
+            </button>
+            <span className="toolbar-separator" />
             <button
               className={`view-mode-btn ${viewMode === 'live' ? 'view-mode-active' : ''}`}
               onClick={() => setViewMode('live')}
@@ -487,7 +486,7 @@ function AppContent() {
           <div
             className="editor-pane"
             style={{
-              display: showEditor && !showEmptyState ? undefined : 'none'
+              display: showEditor && !showDashboard ? undefined : 'none'
             }}
           >
             <MarkdownEditor
@@ -500,7 +499,7 @@ function AppContent() {
           </div>
 
           {/* Reading view */}
-          {showReading && !showEmptyState && (
+          {showReading && !showDashboard && (
             <div className="preview-pane">
               <MarkdownPreview
                 content={currentFileContent}
@@ -521,8 +520,8 @@ function AppContent() {
             </div>
           )}
 
-          {/* Dashboard (no file selected, not in graph) */}
-          {showEmptyState && !showGraph && (
+          {/* Dashboard */}
+          {showDashboard && (
             <Dashboard
               vaultPath={vaultPath}
               onFileClick={handleFileClick}
