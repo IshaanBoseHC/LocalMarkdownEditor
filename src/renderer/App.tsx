@@ -343,6 +343,20 @@ function AppContent() {
         style={{ display: sidebarCollapsed ? 'none' : undefined }}
       />
 
+      {/* Collapsed sidebar expand strip */}
+      {sidebarCollapsed && (
+        <button
+          className="sidebar-expand-strip"
+          onClick={() => setSidebarCollapsed(false)}
+          title="Show sidebar (Cmd+\)"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.2" />
+            <line x1="5.5" y1="1.5" x2="5.5" y2="14.5" stroke="currentColor" strokeWidth="1.2" />
+          </svg>
+        </button>
+      )}
+
       {/* Main content */}
       <div className="main-content">
         {/* Toolbar */}
