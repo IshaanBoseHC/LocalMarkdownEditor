@@ -1692,10 +1692,8 @@ body {
 }
 
 .new-item-dir-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   min-width: 0;
+  word-break: break-all;
 }
 
 .new-item-dir-chevron {
@@ -1749,9 +1747,7 @@ body {
   cursor: pointer;
   text-align: left;
   transition: all var(--transition-fast);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-all;
   box-sizing: border-box;
 }
 

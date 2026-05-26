@@ -9,6 +9,7 @@ interface NewItemDialogProps {
   currentFilePath: string | null
   isOpen: boolean
   initialType: NewItemType
+  initialDir?: string | null
   onCreateFile: (dirPath: string, name: string) => void
   onCreateDir: (dirPath: string, name: string) => void
   onClose: () => void
@@ -40,6 +41,7 @@ export function NewItemDialog({
   currentFilePath,
   isOpen,
   initialType,
+  initialDir,
   onCreateFile,
   onCreateDir,
   onClose
@@ -53,8 +55,14 @@ export function NewItemDialog({
 
   const allDirs = useMemo(() => collectDirs(tree, vaultPath), [tree, vaultPath])
 
-  // Determine the default directory from the current file
+  // Determine the default directory: initialDir (from context menu) > current file's parent > vault root
   const defaultDir = useMemo(() => {
+    if (initialDir) {
+      // Verify it's a valid directory in the tree
+      if (initialDir === vaultPath || allDirs.some((d) => d.path === initialDir)) {
+        return initialDir
+      }
+    }
     if (!currentFilePath) return vaultPath
     // Get the parent directory of the current file
     const parts = currentFilePath.split('/')
@@ -65,7 +73,7 @@ export function NewItemDialog({
       return parentDir
     }
     return vaultPath
-  }, [currentFilePath, vaultPath, allDirs])
+  }, [currentFilePath, vaultPath, allDirs, initialDir])
 
   // Reset state when opening
   useEffect(() => {

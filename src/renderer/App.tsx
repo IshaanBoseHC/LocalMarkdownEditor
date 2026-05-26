@@ -57,6 +57,7 @@ function AppContent() {
   // New item dialog state
   const [newItemOpen, setNewItemOpen] = useState(false)
   const [newItemType, setNewItemType] = useState<'note' | 'folder'>('note')
+  const [newItemDir, setNewItemDir] = useState<string | null>(null)
 
   // Load tree when vault is opened
   useEffect(() => {
@@ -131,6 +132,7 @@ function AppContent() {
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'n') {
         e.preventDefault()
         setNewItemType('note')
+        setNewItemDir(null)
         setNewItemOpen(true)
       }
     }
@@ -182,12 +184,16 @@ function AppContent() {
 
   const handleCreateFile = useCallback(
     async (dirPath: string, nameArg?: string) => {
-      const name = nameArg || prompt('File name:')
-      if (!name) return
-      const finalName = name.endsWith('.md') ? name : `${name}.md`
+      if (!nameArg) {
+        // Open the New Item Dialog pre-set to this directory
+        setNewItemType('note')
+        setNewItemDir(dirPath)
+        setNewItemOpen(true)
+        return
+      }
+      const finalName = nameArg.endsWith('.md') ? nameArg : `${nameArg}.md`
       await window.api.createFile(dirPath, finalName)
       if (vaultPath) loadTree(vaultPath)
-      // Open the newly created file
       const newPath = `${dirPath}/${finalName}`
       openFile(newPath)
       if (viewMode === 'graph' || viewMode === 'dashboard') setViewMode('live')
@@ -197,9 +203,14 @@ function AppContent() {
 
   const handleCreateDir = useCallback(
     async (dirPath: string, nameArg?: string) => {
-      const name = nameArg || prompt('Folder name:')
-      if (!name) return
-      await window.api.createDir(dirPath, name)
+      if (!nameArg) {
+        // Open the New Item Dialog pre-set to this directory
+        setNewItemType('folder')
+        setNewItemDir(dirPath)
+        setNewItemOpen(true)
+        return
+      }
+      await window.api.createDir(dirPath, nameArg)
       if (vaultPath) loadTree(vaultPath)
     },
     [vaultPath, loadTree]
@@ -392,7 +403,7 @@ function AppContent() {
             )}
             <button
               className="toolbar-new-btn"
-              onClick={() => { setNewItemType('note'); setNewItemOpen(true) }}
+              onClick={() => { setNewItemType('note'); setNewItemDir(null); setNewItemOpen(true) }}
               title="New Note (Cmd+N)"
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -402,7 +413,7 @@ function AppContent() {
             </button>
             <button
               className="toolbar-new-btn toolbar-new-folder-btn"
-              onClick={() => { setNewItemType('folder'); setNewItemOpen(true) }}
+              onClick={() => { setNewItemType('folder'); setNewItemDir(null); setNewItemOpen(true) }}
               title="New Folder"
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -525,7 +536,7 @@ function AppContent() {
             <Dashboard
               vaultPath={vaultPath}
               onFileClick={handleFileClick}
-              onNewNote={() => { setNewItemType('note'); setNewItemOpen(true) }}
+              onNewNote={() => { setNewItemType('note'); setNewItemDir(null); setNewItemOpen(true) }}
             />
           )}
         </div>
@@ -547,9 +558,10 @@ function AppContent() {
         currentFilePath={currentFilePath}
         isOpen={newItemOpen}
         initialType={newItemType}
+        initialDir={newItemDir}
         onCreateFile={(dir, name) => handleCreateFile(dir, name)}
         onCreateDir={(dir, name) => handleCreateDir(dir, name)}
-        onClose={() => setNewItemOpen(false)}
+        onClose={() => { setNewItemOpen(false); setNewItemDir(null) }}
       />
     </div>
   )
