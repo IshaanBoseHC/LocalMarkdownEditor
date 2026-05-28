@@ -10,6 +10,7 @@ import { Dashboard } from './components/Dashboard'
 import { QuickSwitcher } from './components/QuickSwitcher'
 import { NewItemDialog } from './components/NewItemDialog'
 import { TagsBar } from './components/TagsBar'
+import { TabBar } from './components/TabBar'
 import { useFileTree } from './hooks/useFileTree'
 import { useFileContent } from './hooks/useFileContent'
 import { useSearch } from './hooks/useSearch'
@@ -27,11 +28,16 @@ type SidebarMode = 'files' | 'search'
 function AppContent() {
   const {
     vaultPath,
+    tabs,
+    activeTabIndex,
     currentFilePath,
     currentFileContent,
     isDirty,
     setVaultPath,
-    setCurrentFile
+    closeAllTabs,
+    closeTab,
+    setActiveTab,
+    renameTab
   } = useVault()
 
   const { tree, loading, loadTree } = useFileTree()
@@ -154,10 +160,31 @@ function AppContent() {
         setNewItemDir(null)
         setNewItemOpen(true)
       }
+      // Cmd+W — close active tab
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'w') {
+        e.preventDefault()
+        if (activeTabIndex >= 0) {
+          closeTab(activeTabIndex)
+        }
+      }
+      // Cmd+Shift+[ — previous tab
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '[') {
+        e.preventDefault()
+        if (tabs.length > 1 && activeTabIndex > 0) {
+          setActiveTab(activeTabIndex - 1)
+        }
+      }
+      // Cmd+Shift+] — next tab
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === ']') {
+        e.preventDefault()
+        if (tabs.length > 1 && activeTabIndex < tabs.length - 1) {
+          setActiveTab(activeTabIndex + 1)
+        }
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [activeTabIndex, tabs.length, closeTab, setActiveTab])
 
   // Sidebar resize
   const handleMouseDown = useCallback(() => {
@@ -244,11 +271,10 @@ function AppContent() {
       const newPath = parts.join('/')
       await window.api.rename(node.path, newPath)
       if (vaultPath) loadTree(vaultPath)
-      if (currentFilePath === node.path) {
-        setCurrentFile(newPath, currentFileContent)
-      }
+      // Update the tab's path if this file is open
+      renameTab(node.path, newPath)
     },
-    [vaultPath, loadTree, currentFilePath, currentFileContent, setCurrentFile]
+    [vaultPath, loadTree, renameTab]
   )
 
   const handleDelete = useCallback(
@@ -259,11 +285,13 @@ function AppContent() {
       if (!confirmed) return
       await window.api.delete(node.path)
       if (vaultPath) loadTree(vaultPath)
-      if (currentFilePath === node.path) {
-        setCurrentFile(null)
+      // Close the tab if this file was open
+      const tabIndex = tabs.findIndex(t => t.filePath === node.path)
+      if (tabIndex >= 0) {
+        closeTab(tabIndex)
       }
     },
-    [vaultPath, loadTree, currentFilePath, setCurrentFile]
+    [vaultPath, loadTree, tabs, closeTab]
   )
 
   const handleSearchResultClick = useCallback(
@@ -277,11 +305,11 @@ function AppContent() {
   const handleSwitchVault = useCallback(async () => {
     const newPath = await window.api.openVault()
     if (newPath) {
-      setCurrentFile(null)
+      closeAllTabs()
       setGraphData(null)
       setVaultPath(newPath)
     }
-  }, [setCurrentFile, setVaultPath])
+  }, [closeAllTabs, setVaultPath])
 
   const handleQuickSwitcherSelect = useCallback(
     (filePath: string) => {
@@ -317,6 +345,19 @@ function AppContent() {
     }
   }, [currentFilePath, vaultPath, summarizing, isDirty, currentFileContent, openFile, saveFile])
 
+  // Tab handlers
+  const handleTabClick = useCallback((index: number) => {
+    setActiveTab(index)
+    // Switch to editor view if on dashboard or graph
+    if (viewMode === 'graph' || viewMode === 'dashboard') {
+      setViewMode('live')
+    }
+  }, [setActiveTab, viewMode])
+
+  const handleTabClose = useCallback((index: number) => {
+    closeTab(index)
+  }, [closeTab])
+
   // Vault selection screen
   if (!vaultPath) {
     return <VaultPicker onVaultSelected={setVaultPath} />
@@ -332,6 +373,8 @@ function AppContent() {
   const showReading = viewMode === 'reading'
   const showGraph = viewMode === 'graph'
   const showDashboard = viewMode === 'dashboard'
+
+  const hasOpenFile = currentFilePath !== null
 
   return (
     <div className="app-layout">
@@ -465,15 +508,7 @@ function AppContent() {
               </svg>
             </button>
             <span className="toolbar-separator" />
-            {fileName && !showGraph && !showDashboard && (
-              <span className="toolbar-filename">
-                {isDirty && (
-                  <span className="dirty-dot" title="Unsaved changes" />
-                )}
-                {fileName}
-              </span>
-            )}
-            {currentFilePath && !showGraph && !showDashboard && (
+            {hasOpenFile && !showGraph && !showDashboard && (
               <button
                 className={`toolbar-new-btn toolbar-summarize-btn ${summarizing ? 'toolbar-summarize-running' : ''}`}
                 onClick={handleSummarize}
@@ -556,13 +591,24 @@ function AppContent() {
           </div>
         </div>
 
+        {/* Tab Bar */}
+        {tabs.length > 0 && !showGraph && !showDashboard && (
+          <TabBar
+            tabs={tabs}
+            activeTabIndex={activeTabIndex}
+            onTabClick={handleTabClick}
+            onTabClose={handleTabClose}
+            onTabMiddleClick={handleTabClose}
+          />
+        )}
+
         {/* Content area */}
         <div className="editor-preview-wrapper">
           {/* Editor (always mounted, hidden when not active) */}
           <div
             className="editor-pane"
             style={{
-              display: showEditor && !showDashboard ? undefined : 'none'
+              display: showEditor && !showDashboard && hasOpenFile ? undefined : 'none'
             }}
           >
             <MarkdownEditor
@@ -575,12 +621,20 @@ function AppContent() {
           </div>
 
           {/* Reading view */}
-          {showReading && !showDashboard && (
+          {showReading && !showDashboard && hasOpenFile && (
             <div className="preview-pane">
               <MarkdownPreview
                 content={currentFileContent}
                 filePath={currentFilePath}
               />
+            </div>
+          )}
+
+          {/* No file open — show hint */}
+          {!hasOpenFile && !showGraph && !showDashboard && (
+            <div className="empty-state">
+              <p className="empty-state-text">No file open</p>
+              <p className="empty-state-hint">Open a file from the sidebar, or press <kbd>Cmd+K</kbd> to search</p>
             </div>
           )}
 

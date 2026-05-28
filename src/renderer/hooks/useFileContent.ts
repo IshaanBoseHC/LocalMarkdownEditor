@@ -2,19 +2,19 @@ import { useCallback, useRef } from 'react'
 import { useVault } from '../context/VaultContext'
 
 export function useFileContent() {
-  const { setCurrentFile, setCurrentFileContent, setIsDirty } = useVault()
+  const { openTab, setCurrentFileContent, setIsDirty } = useVault()
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const openFile = useCallback(
     async (filePath: string) => {
       try {
         const content = await window.api.readFile(filePath)
-        setCurrentFile(filePath, content)
+        openTab(filePath, content)
       } catch (err) {
         console.error('Failed to open file:', err)
       }
     },
-    [setCurrentFile]
+    [openTab]
   )
 
   const saveFile = useCallback(
