@@ -1,6 +1,5 @@
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import { spawn } from 'child_process'
-import * as path from 'path'
 import { IPC } from '../shared/types'
 import { getConfigValue, setConfigValue, getRecentFiles, addRecentFile } from './store'
 import {
@@ -96,40 +95,56 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   })
 
   // Run opencode raw-notes-summarizer on a file
-  ipcMain.handle(IPC.AI_SUMMARIZE, async (_event, filePath: string) => {
-    const dir = path.dirname(filePath)
-
-    // Resolve the full path to the opencode binary so spawn can find it
-    // without shell: true (which breaks paths with spaces)
-    const opencodeBin = await new Promise<string>((res) => {
-      const which = spawn('which', ['opencode'], { shell: true })
-      let out = ''
-      which.stdout.on('data', (d: Buffer) => { out += d.toString() })
-      which.on('close', () => res(out.trim() || 'opencode'))
-    })
-
+  ipcMain.handle(IPC.AI_SUMMARIZE, async (_event, filePath: string, vaultPath: string) => {
     const send = (text: string) => {
       mainWindow.webContents.send(IPC.AI_SUMMARIZE_OUTPUT, text)
     }
 
+    // Resolve the full path to the opencode binary via a login shell
+    // so asdf shims / .zshrc PATH entries are available
+    const opencodeBin = await new Promise<string>((res) => {
+      const which = spawn('/bin/zsh', ['-l', '-c', 'which opencode'], { shell: false })
+      let out = ''
+      which.stdout.on('data', (d: Buffer) => { out += d.toString() })
+      which.on('close', () => res(out.trim() || 'opencode'))
+      which.on('error', () => res('opencode'))
+    })
+
     return new Promise<{ success: boolean; error?: string }>((resolve) => {
       send('Starting opencode...\n')
+
+      // Build an augmented PATH that includes common Node/asdf locations
+      // so opencode can find `node` when run from a GUI-launched Electron
+      const homeDir = process.env.HOME || ''
+      const augmentedPath = [
+        process.env.PATH || '',
+        `${homeDir}/.asdf/shims`,
+        `${homeDir}/.asdf/installs/nodejs/20.19.0/bin`,
+        '/usr/local/bin',
+        '/opt/homebrew/bin',
+        '/usr/bin',
+        '/bin'
+      ].filter(Boolean).join(':')
 
       const proc = spawn(
         opencodeBin,
         [
           'run',
           '--format', 'json',
+          '--dir', vaultPath,
+          '--dangerously-skip-permissions',
           `Use the raw-notes-summarizer skill to summarize the file at ${filePath}`
         ],
         {
-          cwd: dir,
-          env: { ...process.env }
+          cwd: vaultPath,
+          env: { ...process.env, PATH: augmentedPath },
+          stdio: ['ignore', 'pipe', 'pipe']
         }
       )
 
       let stderr = ''
       let buffer = ''
+      let stepStarted = false
 
       proc.stdout.on('data', (data: Buffer) => {
         buffer += data.toString()
@@ -142,31 +157,39 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
             const event = JSON.parse(line)
             switch (event.type) {
               case 'step_start':
-                send('Agent is thinking...\n')
+                if (!stepStarted) {
+                  send('Agent is thinking...\n')
+                  stepStarted = true
+                }
                 break
               case 'text':
                 if (event.part?.text) {
                   send(event.part.text)
                 }
                 break
-              case 'tool_start':
-                if (event.part?.tool) {
-                  const name = event.part.tool
-                  send(`\n[Tool: ${name}]\n`)
+              case 'tool_use': {
+                const tool = event.part?.tool || 'unknown'
+                const status = event.part?.state?.status
+                if (status === 'pending' || !status) {
+                  send(`\n[Tool: ${tool}] running...\n`)
+                } else if (status === 'completed') {
+                  const output = event.part?.state?.output
+                  if (output && typeof output === 'string' && output.length > 0) {
+                    const truncated = output.length > 200 ? output.slice(0, 200) + '...' : output
+                    send(`[Tool: ${tool}] OK\n${truncated}\n`)
+                  } else {
+                    send(`[Tool: ${tool}] OK\n`)
+                  }
+                } else if (status === 'error') {
+                  const error = event.part?.state?.error || 'unknown error'
+                  send(`[Tool: ${tool}] ERROR: ${error}\n`)
                 }
                 break
-              case 'tool_result':
-                if (event.part?.text) {
-                  // Truncate long tool results
-                  const txt = event.part.text
-                  send(txt.length > 300 ? txt.slice(0, 300) + '...\n' : txt + '\n')
-                }
-                break
+              }
               case 'step_finish':
                 send('\nStep complete.\n')
                 break
               default:
-                // Ignore other event types
                 break
             }
           } catch {

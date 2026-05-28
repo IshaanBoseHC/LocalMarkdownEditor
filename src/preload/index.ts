@@ -41,8 +41,8 @@ const api = {
     ipcRenderer.invoke(IPC.VAULT_STATS, vaultPath),
 
   // AI summarize (opencode raw-notes-summarizer)
-  aiSummarize: (filePath: string): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke(IPC.AI_SUMMARIZE, filePath),
+  aiSummarize: (filePath: string, vaultPath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC.AI_SUMMARIZE, filePath, vaultPath),
   onAiSummarizeOutput: (callback: (text: string) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, text: string) => {
       callback(text)

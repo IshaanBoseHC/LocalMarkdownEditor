@@ -294,12 +294,16 @@ function AppContent() {
   )
 
   const handleSummarize = useCallback(async () => {
-    if (!currentFilePath || summarizing) return
+    if (!currentFilePath || !vaultPath || summarizing) return
     setSummarizing(true)
     setSummarizeLog('')
     setSummarizeLogVisible(true)
     try {
-      const result = await window.api.aiSummarize(currentFilePath)
+      // Auto-save any unsaved changes before the agent reads the file from disk
+      if (isDirty && currentFileContent != null) {
+        await saveFile(currentFilePath, currentFileContent)
+      }
+      const result = await window.api.aiSummarize(currentFilePath, vaultPath)
       if (result.success) {
         // Reload the file to pick up the prepended summary
         openFile(currentFilePath)
@@ -311,7 +315,7 @@ function AppContent() {
     } finally {
       setSummarizing(false)
     }
-  }, [currentFilePath, summarizing, openFile])
+  }, [currentFilePath, vaultPath, summarizing, isDirty, currentFileContent, openFile, saveFile])
 
   // Vault selection screen
   if (!vaultPath) {
