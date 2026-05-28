@@ -108,11 +108,18 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       which.on('close', () => res(out.trim() || 'opencode'))
     })
 
+    const send = (text: string) => {
+      mainWindow.webContents.send(IPC.AI_SUMMARIZE_OUTPUT, text)
+    }
+
     return new Promise<{ success: boolean; error?: string }>((resolve) => {
+      send('Starting opencode...\n')
+
       const proc = spawn(
         opencodeBin,
         [
           'run',
+          '--format', 'json',
           `Use the raw-notes-summarizer skill to summarize the file at ${filePath}`
         ],
         {
@@ -122,25 +129,83 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       )
 
       let stderr = ''
+      let buffer = ''
 
       proc.stdout.on('data', (data: Buffer) => {
-        mainWindow.webContents.send(IPC.AI_SUMMARIZE_OUTPUT, data.toString())
+        buffer += data.toString()
+        // Process complete JSON lines
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // keep incomplete last line
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const event = JSON.parse(line)
+            switch (event.type) {
+              case 'step_start':
+                send('Agent is thinking...\n')
+                break
+              case 'text':
+                if (event.part?.text) {
+                  send(event.part.text)
+                }
+                break
+              case 'tool_start':
+                if (event.part?.tool) {
+                  const name = event.part.tool
+                  send(`\n[Tool: ${name}]\n`)
+                }
+                break
+              case 'tool_result':
+                if (event.part?.text) {
+                  // Truncate long tool results
+                  const txt = event.part.text
+                  send(txt.length > 300 ? txt.slice(0, 300) + '...\n' : txt + '\n')
+                }
+                break
+              case 'step_finish':
+                send('\nStep complete.\n')
+                break
+              default:
+                // Ignore other event types
+                break
+            }
+          } catch {
+            // Not valid JSON, send raw
+            send(line + '\n')
+          }
+        }
       })
 
       proc.stderr.on('data', (data: Buffer) => {
-        stderr += data.toString()
-        mainWindow.webContents.send(IPC.AI_SUMMARIZE_OUTPUT, data.toString())
+        const text = data.toString()
+        stderr += text
+        send(text)
       })
 
       proc.on('close', (code) => {
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          try {
+            const event = JSON.parse(buffer)
+            if (event.type === 'text' && event.part?.text) {
+              send(event.part.text)
+            }
+          } catch {
+            send(buffer)
+          }
+        }
+
         if (code === 0) {
+          send('\n--- Done ---\n')
           resolve({ success: true })
         } else {
+          send('\n--- Failed ---\n')
           resolve({ success: false, error: stderr || `Process exited with code ${code}` })
         }
       })
 
       proc.on('error', (err) => {
+        send(`\nError: ${err.message}\n`)
         resolve({ success: false, error: err.message })
       })
     })
