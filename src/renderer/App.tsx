@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { VaultProvider, useVault } from './context/VaultContext'
 import { VaultPicker } from './components/VaultPicker'
 import { FileTree } from './components/Sidebar/FileTree'
@@ -61,6 +61,9 @@ function AppContent() {
 
   // AI summarize state
   const [summarizing, setSummarizing] = useState(false)
+  const [summarizeLog, setSummarizeLog] = useState('')
+  const [summarizeLogVisible, setSummarizeLogVisible] = useState(false)
+  const logEndRef = useRef<HTMLDivElement>(null)
 
   // Load tree when vault is opened
   useEffect(() => {
@@ -103,6 +106,19 @@ function AppContent() {
       })
     }
   }, [viewMode, vaultPath, graphData])
+
+  // Listen for AI summarize output stream
+  useEffect(() => {
+    const unsub = window.api.onAiSummarizeOutput((text) => {
+      setSummarizeLog((prev) => prev + text)
+    })
+    return unsub
+  }, [])
+
+  // Auto-scroll log panel
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [summarizeLog])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -280,16 +296,18 @@ function AppContent() {
   const handleSummarize = useCallback(async () => {
     if (!currentFilePath || summarizing) return
     setSummarizing(true)
+    setSummarizeLog('')
+    setSummarizeLogVisible(true)
     try {
       const result = await window.api.aiSummarize(currentFilePath)
       if (result.success) {
         // Reload the file to pick up the prepended summary
         openFile(currentFilePath)
       } else {
-        alert(`Summarize failed: ${result.error || 'Unknown error'}`)
+        setSummarizeLog((prev) => prev + '\n--- ERROR ---\n' + (result.error || 'Unknown error'))
       }
     } catch (err) {
-      alert(`Summarize error: ${err}`)
+      setSummarizeLog((prev) => prev + '\n--- ERROR ---\n' + String(err))
     } finally {
       setSummarizing(false)
     }
@@ -583,6 +601,28 @@ function AppContent() {
             />
           )}
         </div>
+
+        {/* AI Summarize log panel */}
+        {summarizeLogVisible && (
+          <div className="ai-log-panel">
+            <div className="ai-log-header">
+              <span className="ai-log-title">
+                {summarizing && <span className="toolbar-summarize-spinner" />}
+                {summarizing ? 'Summarizing...' : 'Summary Complete'}
+              </span>
+              <button
+                className="ai-log-close"
+                onClick={() => setSummarizeLogVisible(false)}
+              >
+                &times;
+              </button>
+            </div>
+            <pre className="ai-log-content">
+              {summarizeLog || 'Waiting for output...'}
+              <div ref={logEndRef} />
+            </pre>
+          </div>
+        )}
       </div>
 
       {/* Quick Switcher (Cmd+K) */}

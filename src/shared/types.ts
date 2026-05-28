@@ -84,5 +84,6 @@ export const IPC = {
   RECENT_GET: 'recent:get',
   RECENT_ADD: 'recent:add',
   VAULT_STATS: 'vault:stats',
-  AI_SUMMARIZE: 'ai:summarize'
+  AI_SUMMARIZE: 'ai:summarize',
+  AI_SUMMARIZE_OUTPUT: 'ai:summarize:output'
 } as const

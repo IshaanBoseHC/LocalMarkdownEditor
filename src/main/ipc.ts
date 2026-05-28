@@ -123,8 +123,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
       let stderr = ''
 
+      proc.stdout.on('data', (data: Buffer) => {
+        mainWindow.webContents.send(IPC.AI_SUMMARIZE_OUTPUT, data.toString())
+      })
+
       proc.stderr.on('data', (data: Buffer) => {
         stderr += data.toString()
+        mainWindow.webContents.send(IPC.AI_SUMMARIZE_OUTPUT, data.toString())
       })
 
       proc.on('close', (code) => {

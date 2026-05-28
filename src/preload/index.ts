@@ -43,6 +43,15 @@ const api = {
   // AI summarize (opencode raw-notes-summarizer)
   aiSummarize: (filePath: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC.AI_SUMMARIZE, filePath),
+  onAiSummarizeOutput: (callback: (text: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, text: string) => {
+      callback(text)
+    }
+    ipcRenderer.on(IPC.AI_SUMMARIZE_OUTPUT, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC.AI_SUMMARIZE_OUTPUT, handler)
+    }
+  },
 
   // Watch events (main -> renderer)
   onFsChange: (callback: (event: string, path: string) => void) => {
