@@ -99,19 +99,25 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC.AI_SUMMARIZE, async (_event, filePath: string) => {
     const dir = path.dirname(filePath)
 
+    // Resolve the full path to the opencode binary so spawn can find it
+    // without shell: true (which breaks paths with spaces)
+    const opencodeBin = await new Promise<string>((res) => {
+      const which = spawn('which', ['opencode'], { shell: true })
+      let out = ''
+      which.stdout.on('data', (d: Buffer) => { out += d.toString() })
+      which.on('close', () => res(out.trim() || 'opencode'))
+    })
+
     return new Promise<{ success: boolean; error?: string }>((resolve) => {
       const proc = spawn(
-        'opencode',
+        opencodeBin,
         [
           'run',
-          '--command', 'raw-notes-summarizer',
-          '-f', filePath,
-          'summarize this notes file'
+          `Use the raw-notes-summarizer skill to summarize the file at ${filePath}`
         ],
         {
           cwd: dir,
-          env: { ...process.env, PATH: process.env.PATH },
-          shell: true
+          env: { ...process.env }
         }
       )
 
