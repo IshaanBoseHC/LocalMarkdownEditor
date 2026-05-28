@@ -1553,6 +1553,36 @@ body {
 }
 
 /* ============================================
+   Toolbar – Summarize button
+   ============================================ */
+
+.toolbar-summarize-btn {
+  border: 1px solid rgba(94, 158, 255, 0.2) !important;
+  border-radius: 6px;
+}
+
+.toolbar-summarize-btn:hover {
+  border-color: rgba(94, 158, 255, 0.4) !important;
+  color: var(--accent) !important;
+}
+
+.toolbar-summarize-running {
+  color: var(--accent) !important;
+  cursor: wait !important;
+  opacity: 0.85;
+}
+
+.toolbar-summarize-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(94, 158, 255, 0.25);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ============================================
    New Item Dialog (modal)
    ============================================ */
 

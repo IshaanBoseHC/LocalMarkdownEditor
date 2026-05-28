@@ -59,6 +59,9 @@ function AppContent() {
   const [newItemType, setNewItemType] = useState<'note' | 'folder'>('note')
   const [newItemDir, setNewItemDir] = useState<string | null>(null)
 
+  // AI summarize state
+  const [summarizing, setSummarizing] = useState(false)
+
   // Load tree when vault is opened
   useEffect(() => {
     if (vaultPath) {
@@ -274,6 +277,24 @@ function AppContent() {
     [openFile, viewMode]
   )
 
+  const handleSummarize = useCallback(async () => {
+    if (!currentFilePath || summarizing) return
+    setSummarizing(true)
+    try {
+      const result = await window.api.aiSummarize(currentFilePath)
+      if (result.success) {
+        // Reload the file to pick up the prepended summary
+        openFile(currentFilePath)
+      } else {
+        alert(`Summarize failed: ${result.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      alert(`Summarize error: ${err}`)
+    } finally {
+      setSummarizing(false)
+    }
+  }, [currentFilePath, summarizing, openFile])
+
   // Vault selection screen
   if (!vaultPath) {
     return <VaultPicker onVaultSelected={setVaultPath} />
@@ -429,6 +450,28 @@ function AppContent() {
                 )}
                 {fileName}
               </span>
+            )}
+            {currentFilePath && !showGraph && !showDashboard && (
+              <button
+                className={`toolbar-new-btn toolbar-summarize-btn ${summarizing ? 'toolbar-summarize-running' : ''}`}
+                onClick={handleSummarize}
+                disabled={summarizing}
+                title="Summarize with AI (opencode)"
+              >
+                {summarizing ? (
+                  <>
+                    <span className="toolbar-summarize-spinner" />
+                    <span>Summarizing...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 3h10M3 6h8M3 9h10M3 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                    <span>Summarize</span>
+                  </>
+                )}
+              </button>
             )}
             {showGraph && (
               <div className="graph-filter-wrapper">

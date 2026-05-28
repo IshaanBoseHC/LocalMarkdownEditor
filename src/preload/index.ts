@@ -40,6 +40,10 @@ const api = {
   getVaultStats: (vaultPath: string): Promise<VaultStats> =>
     ipcRenderer.invoke(IPC.VAULT_STATS, vaultPath),
 
+  // AI summarize (opencode raw-notes-summarizer)
+  aiSummarize: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC.AI_SUMMARIZE, filePath),
+
   // Watch events (main -> renderer)
   onFsChange: (callback: (event: string, path: string) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, changeType: string, changePath: string) => {

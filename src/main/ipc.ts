@@ -1,4 +1,6 @@
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
+import { spawn } from 'child_process'
+import * as path from 'path'
 import { IPC } from '../shared/types'
 import { getConfigValue, setConfigValue, getRecentFiles, addRecentFile } from './store'
 import {
@@ -91,5 +93,45 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // Get vault statistics for dashboard
   ipcMain.handle(IPC.VAULT_STATS, async (_event, vaultPath: string) => {
     return getVaultStats(vaultPath)
+  })
+
+  // Run opencode raw-notes-summarizer on a file
+  ipcMain.handle(IPC.AI_SUMMARIZE, async (_event, filePath: string) => {
+    const dir = path.dirname(filePath)
+
+    return new Promise<{ success: boolean; error?: string }>((resolve) => {
+      const proc = spawn(
+        'opencode',
+        [
+          'run',
+          '--command', 'raw-notes-summarizer',
+          '-f', filePath,
+          'summarize this notes file'
+        ],
+        {
+          cwd: dir,
+          env: { ...process.env, PATH: process.env.PATH },
+          shell: true
+        }
+      )
+
+      let stderr = ''
+
+      proc.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString()
+      })
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true })
+        } else {
+          resolve({ success: false, error: stderr || `Process exited with code ${code}` })
+        }
+      })
+
+      proc.on('error', (err) => {
+        resolve({ success: false, error: err.message })
+      })
+    })
   })
 }
